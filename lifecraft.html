@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lifecraft - Survival game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes damageFlash {
+            0%, 100% { background-color: transparent; }
+      50% { background-color: rgba(255,0,0,0.3); }
+        }
+        
+        .block-world {
+            touch-action: none;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(to bottom, #87CEEB 0%, #1E90FF 100%);
+            image-rendering: pixelated;
+        }
+        
+        .block {
+            position: absolute;
+            image-rendering: pixelated;
+            transition: transform 0.1s;
+        }
+        
+        .block:hover {
+            transform: scale(1.05);
+        }
+        
+        .player {
+            position: absolute;
+            z-index: 100;
+            transition: transform 0.15s;
+            image-rendering: pixelated;
+        }
+        
+        .inventory-item {
+            transition: all 0.2s;
+        }
+        
+        .inventory-item.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px gold;
+        }
+        
+        .crafting-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .day-night-cycle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            transition: background-color 5s linear;
+        }
+        
+        .health-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .hunger-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .damage-flash {
+            animation: damageFlash 0.5s;
+        }
+        
+        .mining-progress {
+            transition: width 0.1s linear;
+        }
+        
+        .block-breaking {
+            position: absolute;
+            z-index: 99;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white overflow-hidden select-none">
+    <!-- Start Screen -->
+    <div id="startScreen" class="fixed inset-0 flex flex-col items-center justify-center p-4 z-50 bg-gradient-to-br from-green-900 to-blue-900">
+        <div class="text-center mb-12">
+            <h1 class="text-6xl md:text-7xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-400">
+                LIFECRAFT
+            </h1>
+            <div class="relative mx-auto w-48 h-48 mb-8 grid grid-cols-3 gap-2">
+                <!-- 3D Cube made of blocks -->
+                <div class="bg-green-600 rounded-sm"></div>
+                <div class="bg-green-700 rounded-sm"></div>
+                <div class="bg-green-800 rounded-sm"></div>
+                <div class="bg-green-700 rounded-sm"></div>
+                <div class="bg-green-800 rounded-sm"></div>
+                <div class="bg-green-600 rounded-sm"></div>
+                <div class="bg-green-800 rounded-sm"></div>
+                <div class="bg-green-600 rounded-sm"></div>
+                <div class="bg-green-700 rounded-sm"></div>
+            </div>
+            <p class="text-xl text-gray-300 mb-8">Build, craft and survive in this blocky world!</p>
+        </div>
+        
+        <div class="flex flex-col space-y-4 w-full max-w-xs">
+            <button id="startGame" class="bg-green-600 hover:bg-green-700 text-white text-2xl py-4 px-8 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-300">
+                START GAME
+            </button>
+            
+            <button id="howToPlay" class="bg-blue-600 hover:bg-blue-700 text-white text-xl py-3 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-300">
+                HOW TO PLAY
+            </button>
+            
+            <button id="settingsButton" class="bg-gray-600 hover:bg-gray-700 text-white text-xl py-3 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-300">
+                SETTINGS
+            </button>
+        </div>
+    </div>
+    
+    <!-- How to Play Screen -->
+    <div id="howToScreen" class="fixed inset-0 flex flex-col items-center justify-center p-4 z-50 bg-gray-900 bg-opacity-90 hidden">
+        <div class="max-w-md w-full bg-gray-800 p-6 rounded-xl shadow-2xl overflow-y-auto" style="max-height: 80vh;">
+            <h2 class="text-3xl font-bold mb-6 text-center text-green-400">HOW TO PLAY</h2>
+            
+            <div class="space-y-6 mb-8">
+                <div>
+                    <h3 class="text-xl font-semibold text-blue-400 mb-2">Movement</h3>
+                    <div class="flex items-center space-x-4 mb-2">
+                        <div class="bg-gray-700 p-2 rounded-lg w-10 h-10 flex items-center justify-center">←</div>
+                        <div class="bg-gray-700 p-2 rounded-lg w-10 h-10 flex items-center justify-center">→</div>
+                        <span class="text-gray-300">Move left/right</span>
+                    </div>
+                    <div class="flex items-center space-x-4 mb-2">
+                        <div class="bg-gray-700 p-2 rounded-lg w-10 h-10 flex items-center justify-center">↑</div>
+                        <span class="text-gray-300">Jump</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="bg-gray-700 p-2 rounded-lg w-10 h-10 flex items-center justify-center">↓</div>
+                        <span class="text-gray-300">Sneak</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-semibold text-yellow-400 mb-2">Building</h3>
+                    <p class="text-gray-300 mb-2">Tap and hold on a block to mine it</p>
+                    <p class="text-gray-300 mb-2">Tap on empty space to place your selected block</p>
+                    <p class="text-gray-300">Select blocks from your hotbar at the bottom</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-semibold text-purple-400 mb-2">Survival</h3>
+                    <p class="text-gray-300 mb-2">Watch your health and hunger bars</p>
+                    <p class="text-gray-300 mb-2">Eat food to restore hunger</p>
+                    <p class="text-gray-300">Avoid monsters at night</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-semibold text-green-400 mb-2">Crafting</h3>
+                    <p class="text-gray-300 mb-2">Open inventory to craft new items</p>
+                    <p class="text-gray-300">Combine materials in the 2x2 grid</p>
+                </div>
+            </div>
+            
+            <button id="backFromHowTo" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg shadow-lg">
+                BACK
+            </button>
+        </div>
+    </div>
+    
+    <!-- Settings Screen -->
+    <div id="settingsScreen" class="fixed inset-0 flex flex-col items-center justify-center p-4 z-50 bg-gray-900 bg-opacity-90 hidden">
+        <div class="max-w-md w-full bg-gray-800 p-6 rounded-xl shadow-2xl">
+            <h2 class="text-3xl font-bold mb-6 text-center text-blue-400">SETTINGS</h2>
+            
+            <div class="space-y-6 mb-8">
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-300 mb-3">Controls</h3>
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-gray-400">Touch Controls</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="touchControlsToggle" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Sensitivity</span>
+                        <input id="sensitivitySlider" type="range" min="1" max="10" value="5" class="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-300 mb-3">Graphics</h3>
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-gray-400">Render Distance</span>
+                        <select id="renderDistance" class="bg-gray-700 text-white text-sm rounded-lg p-2">
+                            <option value="8">Near</option>
+                            <option value="12" selected>Medium</option>
+                            <option value="16">Far</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Particles</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="particlesToggle" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-300 mb-3">Gameplay</h3>
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-gray-400">Day/Night Cycle</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="dayNightToggle" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Difficulty</span>
+                        <select id="difficultySelect" class="bg-gray-700 text-white text-sm rounded-lg p-2">
+                            <option value="0">Peaceful</option>
+                            <option value="1" selected>Easy</option>
+                            <option value="2">Normal</option>
+                            <option value="3">Hard</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button id="saveSettings" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg">
+                    SAVE
+                </button>
+                
+                <button id="cancelSettings" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg">
+                    CANCEL
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Screen -->
+    <div id="gameScreen" class="fixed inset-0 z-10 hidden">
+        <!-- World Container -->
+        <div id="worldContainer" class="block-world w-full h-full relative">
+            <!-- Day/Night Cycle Overlay -->
+            <div id="dayNightCycle" class="day-night-cycle"></div>
+            
+            <!-- Blocks will be generated here -->
+            <div id="worldBlocks"></div>
+            
+            <!-- Player -->
+            <div id="player" class="player w-8 h-16 bg-green-700">
+                <!-- Player head -->
+                <div class="absolute top-0 left-0 w-8 h-8 bg-green-800"></div>
+                <!-- Player eyes -->
+                <div class="absolute top-2 left-2 w-2 h-2 bg-white rounded-full"></div>
+                <div class="absolute top-2 left-4 w-2 h-2 bg-white rounded-full"></div>
+                <!-- Player body -->
+                <div class="absolute top-8 left-0 w-8 h-8 bg-green-700"></div>
+            </div>
+            
+            <!-- Block breaking effect -->
+            <div id="blockBreaking" class="block-breaking hidden w-16 h-16 border-4 border-yellow-400 rounded-sm"></div>
+            
+            <!-- Clouds -->
+            <div id="cloudsContainer" class="absolute inset-0 pointer-events-none"></div>
+        </div>
+        
+        <!-- Game UI -->
+        <div class="absolute top-4 left-4 right-4 flex justify-between items-center">
+            <!-- Health -->
+            <div class="bg-black bg-opacity-50 rounded-full px-4 py-2 flex items-center">
+                <div class="relative w-24 h-4 bg-gray-700 rounded-full mr-2">
+                    <div id="healthBar" class="health-bar absolute top-0 left-0 h-full bg-red-500 rounded-full" style="width: 100%;"></div>
+                </div>
+                <span class="text-white">❤️</span>
+            </div>
+            
+            <!-- Hunger -->
+            <div class="bg-black bg-opacity-50 rounded-full px-4 py-2 flex items-center">
+                <div class="relative w-24 h-4 bg-gray-700 rounded-full mr-2">
+                    <div id="hungerBar" class="hunger-bar absolute top-0 left-0 h-full bg-yellow-500 rounded-full" style="width: 100%;"></div>
+                </div>
+                <span class="text-white">🍗</span>
+            </div>
+            
+            <!-- Time of day -->
+            <div id="timeDisplay" class="bg-black bg-opacity-50 rounded-full px-4 py-2">
+                <span class="text-yellow-300">☀️</span>
+            </div>
+        </div>
+        
+        <!-- Hotbar -->
+        <div id="hotbar" class="absolute bottom-4 left-0 right-0 flex justify-center">
+            <div class="bg-black bg-opacity-50 rounded-xl px-2 py-2 flex space-x-2">
+                <!-- Hotbar slots will be added here -->
+            </div>
+        </div>
+        
+        <!-- Touch Controls (for mobile) -->
+        <div id="touchControls" class="absolute bottom-20 left-4 right-4 flex justify-between pointer-events-none">
+            <div class="flex space-x-4">
+                <div id="moveLeft" class="w-16 h-16 bg-black bg-opacity-30 rounded-full flex items-center justify-center pointer-events-auto">
+                    <span class="text-3xl">←</span>
+                </div>
+                <div id="moveRight" class="w-16 h-16 bg-black bg-opacity-30 rounded-full flex items-center justify-center pointer-events-auto">
+                    <span class="text-3xl">→</span>
+                </div>
+            </div>
+            <div class="flex space-x-4">
+                <div id="jumpButton" class="w-16 h-16 bg-black bg-opacity-30 rounded-full flex items-center justify-center pointer-events-auto">
+                    <span class="text-3xl">↑</span>
+                </div>
+                <div id="sneakButton" class="w-16 h-16 bg-black bg-opacity-30 rounded-full flex items-center justify-center pointer-events-auto">
+                    <span class="text-3xl">↓</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Inventory Button -->
+        <button id="inventoryButton" class="absolute top-4 right-4 w-12 h-12 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+            <span class="text-2xl">🎒</span>
+        </button>
+    </div>
+    
+    <!-- Inventory Screen -->
+    <div id="inventoryScreen" class="fixed inset-0 z-50 bg-gray-900 bg-opacity-90 hidden overflow-y-auto">
+        <div class="max-w-md w-full mx-auto p-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-green-400">INVENTORY</h2>
+                <button id="closeInventory" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg">
+                    CLOSE
+                </button>
+            </div>
+            
+            <div class="bg-gray-800 rounded-xl p-4 mb-6">
+                <h3 class="text-xl font-semibold text-blue-400 mb-3">Crafting</h3>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-gray-700 p-3 rounded-lg">
+                        <h4 class="text-center mb-2">2x2 Crafting</h4>
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div class="crafting-slot w-8 h-8 bg-gray-600 rounded-sm"></div>
+                            <div class="crafting-slot w-8 h-8 bg-gray-600 rounded-sm"></div>
+                            <div class="crafting-slot w-8 h-8 bg-gray-600 rounded-sm"></div>
+                            <div class="crafting-slot w-8 h-8 bg-gray-600 rounded-sm"></div>
+                        </div>
+                        <div class="flex justify-center">
+                            <div class="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center">
+                                <span class="text-gray-400">→</span>
+                            </div>
+                        </div>
+                        <div id="craftingResult" class="w-12 h-12 bg-gray-700 rounded-lg mt-2 mx-auto flex items-center justify-center">
+                            <span class="text-gray-400">?</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-700 p-3 rounded-lg">
+                        <h4 class="text-center mb-2">Recipes</h4>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="crafting-recipe w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center" data-recipe="wood-planks">
+                                <span class="text-xs text-center">Wood → Planks</span>
+                            </div>
+                            <div class="crafting-recipe w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center" data-recipe="stick">
+                                <span class="text-xs text-center">Planks → Stick</span>
+                            </div>
+                            <div class="crafting-recipe w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center" data-recipe="crafting-table">
+                                <span class="text-xs text-center">Planks → Table</span>
+                            </div>
+                            <div class="crafting-recipe w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center" data-recipe="wood-pickaxe">
+                                <span class="text-xs text-center">Stick + Planks → Pick</span>
+                            </div>
+                            <div class="crafting-recipe w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center" data-recipe="torch">
+                                <span class="text-xs text-center">Coal + Stick → Torch</span>
+                            </div>
+                            <div class="crafting-recipe w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center" data-recipe="furnace">
+                                <span class="text-xs text-center">Cobble → Furnace</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-800 rounded-xl p-4">
+                <h3 class="text-xl font-semibold text-purple-400 mb-3">Inventory</h3>
+                <div class="grid grid-cols-4 gap-2 mb-4">
+                    <!-- Inventory slots will be added here -->
+                </div>
+                
+                <div class="bg-gray-700 rounded-lg p-3">
+                    <h4 class="text-center mb-2">Quick Craft</h4>
+                    <div class="flex justify-center space-x-4">
+                        <button id="craftAll" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">
+                            CRAFT ALL
+                        </button>
+                        <button id="sortInventory" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
+                            SORT
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pause Menu -->
+    <div id="pauseMenu" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-70 hidden">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-xs w-full">
+            <h2 class="text-3xl font-bold mb-6 text-center">GAME PAUSED</h2>
+            
+            <div class="space-y-3">
+                <button id="resumeButton" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg">
+                    RESUME
+                </button>
+                
+                <button id="settingsInGameButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg">
+                    SETTINGS
+                </button>
+                
+                <button id="saveAndQuitButton" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg">
+                    SAVE & QUIT
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-90 hidden">
+        <div class="bg-gray-800 rounded-xl p-6 max-w-xs w-full border-2 border-red-500">
+            <h2 class="text-3xl font-bold mb-2 text-center text-red-500">GAME OVER</h2>
+            <p class="text-center text-gray-400 mb-6">You didn't survive the night...</p>
+            
+            <div class="bg-gray-700 rounded-lg p-4 mb-6">
+                <div class="flex justify-between mb-2">
+                    <span>Blocks Mined:</span>
+                    <span id="blocksMinedStat" class="font-bold">0</span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span>Items Crafted:</span>
+                    <span id="itemsCraftedStat" class="font-bold">0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Time Survived:</span>
+                    <span id="timeSurvivedStat" class="font-bold">0s</span>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button id="playAgainButton" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg">
+                    PLAY AGAIN
+                </button>
+                
+                <button id="menuFromGameOverButton" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg">
+                    MENU
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Game state
+        const gameState = {
+            // World
+            world: {},
+            chunkSize: 16,
+            renderDistance: 12,
+            seed: Math.floor(Math.random() * 1000000),
+            time: 0,
+            dayLength: 120000, // 2 minutes per day
+            isDay: true,
+            
+            // Player
+            player: {
+                x: 0,
+                y: 64,
+                velocityX: 0,
+                velocityY: 0,
+                speed: 3,
+                jumpForce: 10,
+                gravity: 0.5,
+                isGrounded: false,
+                isSneaking: false,
+                health: 20,
+                maxHealth: 20,
+                hunger: 20,
+                maxHunger: 20,
+                inventory: [],
+                hotbar: [],
+                selectedHotbarIndex: 0,
+                facing: 1 // 1 for right, -1 for left
+            },
+            
+            // Game stats
+            stats: {
+                blocksMined: 0,
+                itemsCrafted: 0,
+                startTime: 0,
+                mobsKilled: 0
+            },
+            
+            // Game settings
+            settings: {
+                touchControls: true,
+                sensitivity: 5,
+                particles: true,
+                dayNightCycle: true,
+                difficulty: 1 // 0-3
+            },
+            
+            // Game status
+            isRunning: false,
+            isPaused: false,
+            gameLoop: null,
+            inventoryOpen: false,
+            
+            // Block types
+            blockTypes: {
+                'grass': { color: '#7CFC00', hardness: 0.6, tool: 'shovel', drops: 'dirt' },
+                'dirt': { color: '#8B4513', hardness: 0.5, tool: 'shovel' },
+                'stone': { color: '#808080', hardness: 1.5, tool: 'pickaxe', drops: 'cobblestone' },
+                'cobblestone': { color: '#696969', hardness: 2.0, tool: 'pickaxe' },
+                'sand': { color: '#F4A460', hardness: 0.5, tool: 'shovel' },
+                'log': { color: '#8B4513', hardness: 1.0, tool: 'axe', drops: 'wood' },
+                'wood': { color: '#CD853F', hardness: 0.8, tool: 'axe' },
+                'leaves': { color: '#2E8B57', hardness: 0.3, tool: 'shears', transparent: true },
+                'coal': { color: '#36454F', hardness: 1.5, tool: 'pickaxe' },
+                'iron': { color: '#B0C4DE', hardness: 2.5, tool: 'pickaxe' },
+                'gold': { color: '#FFD700', hardness: 3.0, tool: 'pickaxe' },
+                'diamond': { color: '#00BFFF', hardness: 4.0, tool: 'pickaxe' },
+                'water': { color: '#1E90FF', hardness: 0, liquid: true, transparent: true },
+                'lava': { color: '#FF4500', hardness: 0, liquid: true, transparent: true }
+            },
+            
+            // Item types
+            itemTypes: {
+                'wood': { stack: 64, image: '🪵' },
+                'planks': { stack: 64, image: '🪵' },
+                'stick': { stack: 64, image: '│' },
+                'coal': { stack: 64, image: '⛏️' },
+                'iron': { stack: 64, image: '⛏️' },
+                'gold': { stack: 64, image: '⛏️' },
+                'diamond': { stack: 64, image: '💎' },
+                'apple': { stack: 64, image: '🍎', food: 4 },
+                'bread': { stack: 64, image: '🍞', food: 5 },
+                'wood-pickaxe': { stack: 1, image: '⛏️', tool: 'pickaxe', efficiency: 1.2, durability: 60 },
+                'stone-pickaxe': { stack: 1, image: '⛏️', tool: 'pickaxe', efficiency: 1.5, durability: 132 },
+                'iron-pickaxe': { stack: 1, image: '⛏️', tool: 'pickaxe', efficiency: 2.0, durability: 251 },
+                'diamond-pickaxe': { stack: 1, image: '⛏️', tool: 'pickaxe', efficiency: 3.0, durability: 1562 },
+                'torch': { stack: 64, image: '🕯️', light: true }
+            },
+            
+            // Crafting recipes
+            craftingRecipes: {
+                'planks': { ingredients: { 'wood': 1 }, result: { 'planks': 4 }, shape: null },
+                'stick': { ingredients: { 'planks': 2 }, result: { 'stick': 4 }, shape: ['v', 'v'] },
+                'wood-pickaxe': { 
+                    ingredients: { 'planks': 3, 'stick': 2 }, 
+                    result: { 'wood-pickaxe': 1 }, 
+                    shape: ['ppp', ' s ', ' s '] 
+                },
+                'torch': { 
+                    ingredients: { 'coal': 1, 'stick': 1 }, 
+                    result: { 'torch': 4 }, 
+                    shape: ['c', 's'] 
+                }
+            },
+            
+            // Controls
+            keys: {
+                left: false,
+                right: false,
+                up: false,
+                down: false,
+                space: false
+            },
+            
+            // Mining
+            miningBlock: null,
+            miningProgress: 0,
+            miningInterval: null,
+            
+            // Clouds
+            clouds: []
+        };
+        
+        // DOM elements
+        const startScreen = document.getElementById('startScreen');
+        const howToScreen = document.getElementById('howToScreen');
+        const settingsScreen = document.getElementById('settingsScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const inventoryScreen = document.getElementById('inventoryScreen');
+        const pauseMenu = document.getElementById('pauseMenu');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        
+        const worldContainer = document.getElementById('worldContainer');
+        const worldBlocks = document.getElementById('worldBlocks');
+        const playerElement = document.getElementById('player');
+        const dayNightCycle = document.getElementById('dayNightCycle');
+        const blockBreaking = document.getElementById('blockBreaking');
+        const cloudsContainer = document.getElementById('cloudsContainer');
+        
+        const healthBar = document.getElementById('healthBar');
+        const hungerBar = document.getElementById('hungerBar');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const hotbar = document.querySelector('#hotbar > div');
+        
+        // Initialize game
+        function initGame() {
+            // Reset game state
+            gameState.world = {};
+            gameState.time = 0;
+            gameState.isDay = true;
+            gameState.isRunning = true;
+            gameState.isPaused = false;
+            gameState.inventoryOpen = false;
+            
+            // Reset player
+            gameState.player = {
+                x: 0,
+                y: 64,
+                velocityX: 0,
+                velocityY: 0,
+                speed: 3,
+                jumpForce: 10,
+                gravity: 0.5,
+                isGrounded: false,
+                isSneaking: false,
+                health: 20,
+                maxHealth: 20,
+                hunger: 20,
+                maxHunger: 20,
+                inventory: [],
+                hotbar: [],
+                selectedHotbarIndex: 0,
+                facing: 1
+            };
+            
+            // Reset stats
+            gameState.stats = {
+                blocksMined: 0,
+                itemsCrafted: 0,
+                startTime: Date.now(),
+                mobsKilled: 0
+            };
+            
+            // Generate initial inventory
+            addItemToInventory('wood', 10);
+            addItemToInventory('planks', 20);
+            addItemToInventory('stick', 8);
+            addItemToInventory('coal', 4);
+            
+            // Setup hotbar
+            updateHotbar();
+            
+            // Clear world
+            worldBlocks.innerHTML = '';
+            cloudsContainer.innerHTML = '';
+            
+            // Generate initial world
+            generateWorld();
+            
+            // Generate clouds
+            generateClouds();
+            
+            // Update UI
+            updateUI();
+            
+            // Start game loop
+            gameState.gameLoop = requestAnimationFrame(gameUpdate);
+            
+            // Start day/night cycle
+            updateDayNightCycle();
+        }
+        
+        // Generate world
+        function generateWorld() {
+            // Simple terrain generation
+            const chunkX = Math.floor(gameState.player.x / (gameState.chunkSize * 16));
+            
+            for (let cx = chunkX - 2; cx <= chunkX + 2; cx++) {
+                for (let x = cx * gameState.chunkSize; x < (cx + 1) * gameState.chunkSize; x++) {
+                    // Generate height using Perlin-like noise
+                    const height = Math.floor(noise(x / 20) * 10 + 60);
+                    
+                    // Generate layers
+                    setBlock(x, height, 'grass');
+                    for (let y = height - 1; y > height - 4; y--) {
+                        setBlock(x, y, 'dirt');
+                    }
+                    for (let y = height - 4; y > 0; y--) {
+                        setBlock(x, y, 'stone');
+                    }
+                    
+                    // Generate water
+                    if (height < 62) {
+                        for (let y = height + 1; y <= 62; y++) {
+                            setBlock(x, y, 'water');
+                        }
+                    }
+                    
+                    // Generate some trees
+                    if (Math.random() < 0.02 && height >= 60) {
+                        const treeHeight = Math.floor(Math.random() * 3) + 4;
+                        
+                        // Trunk
+                        for (let y = height + 1; y <= height + treeHeight; y++) {
+                            setBlock(x, y, 'log');
+                        }
+                        
+                        // Leaves
+                        for (let lx = x - 2; lx <= x + 2; lx++) {
+                            for (let ly = height + treeHeight - 1; ly <= height + treeHeight + 2; ly++) {
+                                if (Math.random() < 0.7 || (lx === x && ly === height + treeHeight + 1)) {
+                                    setBlock(lx, ly, 'leaves');
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Generate some ores
+                    if (Math.random() < 0.01) {
+                        const oreType = Math.random() < 0.6 ? 'coal' : 
+                                       Math.random() < 0.3 ? 'iron' : 
+                                       Math.random() < 0.1 ? 'gold' : 'diamond';
+                                       
+                        const oreY = Math.floor(Math.random() * height);
+                        const oreSize = Math.floor(Math.random() * 3) + 1;
+                        
+                        for (let ox = x; ox < x + oreSize; ox++) {
+                            for (let oy = oreY; oy > oreY - oreSize; oy--) {
+                                if (getBlock(ox, oy) === 'stone') {
+                                    setBlock(ox, oy, oreType);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Generate clouds
+        function generateClouds() {
+            gameState.clouds = [];
+            
+            for (let i = 0; i < 10; i++) {
+                const cloud = {
+                    x: Math.random() * 1000 - 500,
+                    y: Math.random() * 100 + 50,
+                    width: Math.random() * 50 + 50,
+                    speed: Math.random() * 0.2 + 0.1
+                };
+                
+                gameState.clouds.push(cloud);
+                
+                const cloudElement = document.createElement('div');
+                cloudElement.className = 'absolute bg-white bg-opacity-30 rounded-full';
+                cloudElement.style.width = `${cloud.width}px`;
+                cloudElement.style.height = `${cloud.width / 2}px`;
+                cloudElement.style.left = `${cloud.x}px`;
+                cloudElement.style.top = `${cloud.y}px`;
+                
+                cloudsContainer.appendChild(cloudElement);
+            }
+        }
+        
+        // Update clouds
+        function updateClouds() {
+            const cloudElements = cloudsContainer.children;
+            
+            for (let i = 0; i < gameState.clouds.length; i++) {
+                const cloud = gameState.clouds[i];
+                cloud.x += cloud.speed;
+                
+                // Wrap around
+                if (cloud.x > window.innerWidth + 100) {
+                    cloud.x = -cloud.width - 100;
+                }
+                
+                cloudElements[i].style.left = `${cloud.x}px`;
+            }
+        }
+        
+        // Simple noise function for terrain generation
+        function noise(x) {
+            x = (x << 13) ^ x;
+            return (1.0 - ((x * (x * x * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0);
+        }
+        
+        // Set block in world
+        function setBlock(x, y, type) {
+            const chunkX = Math.floor(x / gameState.chunkSize);
+            const chunkY = Math.floor(y / gameState.chunkSize);
+            const chunkKey = `${chunkX},${chunkY}`;
+            
+            if (!gameState.world[chunkKey]) {
+                gameState.world[chunkKey] = {};
+            }
+            
+            const blockX = x % gameState.chunkSize;
+            const blockY = y % gameState.chunkSize;
+            const blockKey = `${blockX},${blockY}`;
+            
+            gameState.world[chunkKey][blockKey] = type;
+            
+            // Update visual block if it exists
+            const blockElement = document.getElementById(`block-${x}-${y}`);
+            if (blockElement) {
+                if (type === 'air') {
+                    blockElement.remove();
+                } else {
+                    blockElement.style.backgroundColor = gameState.blockTypes[type].color;
+                }
+            }
+        }
+        
+        // Get block from world
+        function getBlock(x, y) {
+            const chunkX = Math.floor(x / gameState.chunkSize);
+            const chunkY = Math.floor(y / gameState.chunkSize);
+            const chunkKey = `${chunkX},${chunkY}`;
+            
+            if (!gameState.world[chunkKey]) return 'air';
+            
+            const blockX = x % gameState.chunkSize;
+            const blockY = y % gameState.chunkSize;
+            const blockKey = `${blockX},${blockY}`;
+            
+            return gameState.world[chunkKey][blockKey] || 'air';
+        }
+        
+        // Render visible blocks
+        function renderBlocks() {
+            const playerX = gameState.player.x;
+            const playerY = gameState.player.y;
+            
+            const startX = Math.floor(playerX / 16) * 16 - gameState.renderDistance * 16;
+            const endX = Math.floor(playerX / 16) * 16 + gameState.renderDistance * 16;
+            const startY = Math.floor(playerY / 16) * 16 - gameState.renderDistance * 8;
+            const endY = Math.floor(playerY / 16) * 16 + gameState.renderDistance * 8;
+            
+            // Remove blocks that are out of render distance
+            const blockElements = worldBlocks.querySelectorAll('.block');
+            blockElements.forEach(block => {
+                const blockX = parseInt(block.dataset.x);
+                const blockY = parseInt(block.dataset.y);
+                
+                if (blockX < startX || blockX > endX || blockY < startY || blockY > endY) {
+                    block.remove();
+                }
+            });
+            
+            // Add new blocks in render distance
+            for (let x = startX; x <= endX; x++) {
+                for (let y = startY; y <= endY; y++) {
+                    const blockType = getBlock(x, y);
+                    
+                    if (blockType !== 'air' && !document.getElementById(`block-${x}-${y}`)) {
+                        const block = document.createElement('div');
+                        block.className = 'block';
+                        block.id = `block-${x}-${y}`;
+                        block.dataset.x = x;
+                        block.dataset.y = y;
+                        block.dataset.type = blockType;
+                        
+                        block.style.left = `${x * 16}px`;
+                        block.style.top = `${y * 16}px`;
+                        block.style.width = '16px';
+                        block.style.height = '16px';
+                        
+                        const blockInfo = gameState.blockTypes[blockType];
+                        block.style.backgroundColor = blockInfo.color;
+                        
+                        if (blockInfo.transparent) {
+                            block.style.opacity = '0.7';
+                        }
+                        
+                        worldBlocks.appendChild(block);
+                    }
+                }
+            }
+        }
+        
+        // Game update loop
+        function gameUpdate(timestamp) {
+            if (!gameState.isRunning || gameState.isPaused || gameState.inventoryOpen) return;
+            
+            // Update time
+            gameState.time += 16; // ~60fps
+            updateDayNightCycle();
+            
+            // Update player movement
+            updatePlayer();
+            
+            // Update world rendering
+            renderBlocks();
+            
+            // Update clouds
+            updateClouds();
+            
+            // Update hunger
+            if (timestamp % 1000 === 0) {
+                gameState.player.hunger = Math.max(0, gameState.player.hunger - 0.1);
+                
+                if (gameState.player.hunger <= 0) {
+                    gameState.player.health = Math.max(1, gameState.player.health - 0.5);
+                }
+            }
+            
+            // Update UI
+            updateUI();
+            
+            // Check for death
+            if (gameState.player.health <= 0) {
+                gameOver();
+                return;
+            }
+            
+            // Continue game loop
+            gameState.gameLoop = requestAnimationFrame(gameUpdate);
+        }
+        
+        // Update player movement
+        function updatePlayer() {
+            const player = gameState.player;
+            
+            // Horizontal movement
+            if (gameState.keys.left) {
+                player.velocityX = -player.speed;
+                player.facing = -1;
+            } else if (gameState.keys.right) {
+                player.velocityX = player.speed;
+                player.facing = 1;
+            } else {
+                player.velocityX = 0;
+            }
+            
+            // Apply sneaking
+            if (gameState.keys.down) {
+                player.isSneaking = true;
+                player.velocityX *= 0.5;
+            } else {
+                player.isSneaking = false;
+            }
+            
+            // Jumping
+            if ((gameState.keys.up || gameState.keys.space) && player.isGrounded) {
+                player.velocityY = -player.jumpForce;
+                player.isGrounded = false;
+            }
+            
+            // Apply gravity
+            player.velocityY += player.gravity;
+            
+            // Update position
+            const newX = player.x + player.velocityX;
+            const newY = player.y + player.velocityY;
+            
+            // Collision detection
+            player.isGrounded = false;
+            
+            // Check block collisions
+            const playerWidth = 8;
+            const playerHeight = 16;
+            
+            // Check blocks around player
+            const checkX = Math.floor(newX / 16);
+            const checkY = Math.floor(newY / 16);
+            
+            for (let x = checkX - 1; x <= checkX + 1; x++) {
+                for (let y = checkY - 2; y <= checkY + 1; y++) {
+                    const blockType = getBlock(x, y);
+                    
+                    if (blockType !== 'air' && !gameState.blockTypes[blockType].liquid) {
+                        const blockX = x * 16;
+                        const blockY = y * 16;
+                        
+                        // Check if player is colliding with this block
+                        if (
+                            newX + playerWidth > blockX &&
+                            newX < blockX + 16 &&
+                            newY + playerHeight > blockY &&
+                            newY < blockY + 16
+                        ) {
+                            // Collision from top
+                            if (player.y + playerHeight <= blockY && player.velocityY > 0) {
+                                player.velocityY = 0;
+                                player.y = blockY - playerHeight;
+                                player.isGrounded = true;
+                            }
+                            // Collision from bottom
+                            else if (player.y >= blockY + 16 && player.velocityY < 0) {
+                                player.velocityY = 0;
+                                player.y = blockY + 16;
+                            }
+                            // Collision from left
+                            else if (player.x + playerWidth <= blockX && player.velocityX > 0) {
+                                player.velocityX = 0;
+                                player.x = blockX - playerWidth;
+                            }
+                            // Collision from right
+                            else if (player.x >= blockX + 16 && player.velocityX < 0) {
+                                player.velocityX = 0;
+                                player.x = blockX + 16;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Update player position
+            player.x = newX;
+            player.y = newY;
+            
+            // Update player element position
+            playerElement.style.left = `${player.x}px`;
+            playerElement.style.top = `${player.y}px`;
+            
+            // Flip player based on facing direction
+            playerElement.style.transform = `scaleX(${player.facing})`;
+            
+            // Center camera on player
+            worldContainer.style.transform = `translate(${window.innerWidth/2 - player.x - 8}px, ${window.innerHeight/2 - player.y - 8}px)`;
+        }
+        
+        // Update day/night cycle
+        function updateDayNightCycle() {
+            if (!gameState.settings.dayNightCycle) {
+                dayNightCycle.style.backgroundColor = 'transparent';
+                timeDisplay.innerHTML = '☀️';
+                return;
+            }
+            
+            const dayProgress = (gameState.time % gameState.dayLength) / gameState.dayLength;
+            
+            if (dayProgress < 0.25 || dayProgress > 0.75) {
+                // Night time
+                if (gameState.isDay) {
+                    gameState.isDay = false;
+                    timeDisplay.innerHTML = '🌙';
+                }
+                
+                const nightOpacity = dayProgress < 0.25 ? 
+                    (0.25 - dayProgress) * 4 : 
+                    (dayProgress - 0.75) * 4;
+                
+                dayNightCycle.style.backgroundColor = `rgba(0, 0, 30, ${nightOpacity * 0.7})`;
+            } else {
+                // Day time
+                if (!gameState.isDay) {
+                    gameState.isDay = true;
+                    timeDisplay.innerHTML = '☀️';
+                }
+                dayNightCycle.style.backgroundColor = 'transparent';
+            }
+        }
+        
+        // Update UI
+        function updateUI() {
+            // Update health bar
+            const healthPercent = (gameState.player.health / gameState.player.maxHealth) * 100;
+            healthBar.style.width = `${healthPercent}%`;
+            
+            // Update hunger bar
+            const hungerPercent = (gameState.player.hunger / gameState.player.maxHunger) * 100;
+            hungerBar.style.width = `${hungerPercent}%`;
+        }
+        
+        // Update hotbar
+        function updateHotbar() {
+            hotbar.innerHTML = '';
+            
+            for (let i = 0; i < 9; i++) {
+                const item = gameState.player.hotbar[i];
+                const slot = document.createElement('div');
+                slot.className = `inventory-item w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center ${
+                    i === gameState.player.selectedHotbarIndex ? 'active' : ''
+                }`;
+                slot.dataset.index = i;
+                
+                if (item) {
+                    slot.innerHTML = `<span class="text-xl">${gameState.itemTypes[item.type].image}</span>
+                                     <span class="absolute bottom-0 right-0 text-xs bg-black bg-opacity-50 px-1 rounded">${item.count}</span>`;
+                }
+                
+                hotbar.appendChild(slot);
+            }
+        }
+        
+        // Add item to inventory
+        function addItemToInventory(type, count = 1) {
+            const itemType = gameState.itemTypes[type];
+            if (!itemType) return false;
+            
+            // Check if item exists in inventory and can stack
+            for (let item of gameState.player.inventory) {
+                if (item.type === type && item.count < itemType.stack) {
+                    const spaceLeft = itemType.stack - item.count;
+                    const toAdd = Math.min(spaceLeft, count);
+                    
+                    item.count += toAdd;
+                    count -= toAdd;
+                    
+                    if (count <= 0) break;
+                }
+            }
+            
+            // Add new stack if needed
+            while (count > 0) {
+                const toAdd = Math.min(count, itemType.stack);
+                gameState.player.inventory.push({ type, count: toAdd });
+                count -= toAdd;
+                
+                // Add to hotbar if empty
+                for (let i = 0; i < gameState.player.hotbar.length; i++) {
+                    if (!gameState.player.hotbar[i]) {
+                        gameState.player.hotbar[i] = { type, count: toAdd };
+                        break;
+                    }
+                }
+            }
+            
+            updateHotbar();
+            return true;
+        }
+        
+        // Remove item from inventory
+        function removeItemFromInventory(type, count = 1) {
+            let remaining = count;
+            
+            // Remove from hotbar first
+            for (let i = 0; i < gameState.player.hotbar.length; i++) {
+                const item = gameState.player.hotbar[i];
+                if (item && item.type === type) {
+                    const toRemove = Math.min(remaining, item.count);
+                    item.count -= toRemove;
+                    remaining -= toRemove;
+                    
+                    if (item.count <= 0) {
+                        gameState.player.hotbar[i] = null;
+                    }
+                    
+                    if (remaining <= 0) break;
+                }
+            }
+            
+            // Remove from inventory if still needed
+            if (remaining > 0) {
+                for (let i = gameState.player.inventory.length - 1; i >= 0; i--) {
+                    const item = gameState.player.inventory[i];
+                    if (item && item.type === type) {
+                        const toRemove = Math.min(remaining, item.count);
+                        item.count -= toRemove;
+                        remaining -= toRemove;
+                        
+                        if (item.count <= 0) {
+                            gameState.player.inventory.splice(i, 1);
+                        }
+                        
+                        if (remaining <= 0) break;
+                    }
+                }
+            }
+            
+            updateHotbar();
+            return remaining === 0;
+        }
+        
+        // Get selected hotbar item
+        function getSelectedItem() {
+            return gameState.player.hotbar[gameState.player.selectedHotbarIndex] || null;
+        }
+        
+        // Mine block
+        function startMiningBlock(x, y) {
+            const blockType = getBlock(x, y);
+            if (blockType === 'air' || gameState.blockTypes[blockType].liquid) return;
+            
+            gameState.miningBlock = { x, y, type: blockType };
+            gameState.miningProgress = 0;
+            
+            // Show block breaking effect
+            blockBreaking.style.left = `${x * 16}px`;
+            blockBreaking.style.top = `${y * 16}px`;
+            blockBreaking.classList.remove('hidden');
+            
+            // Calculate mining time based on block hardness and tool
+            const blockInfo = gameState.blockTypes[blockType];
+            let miningTime = blockInfo.hardness * 1000;
+            
+            const selectedItem = getSelectedItem();
+            if (selectedItem && gameState.itemTypes[selectedItem.type].tool === blockInfo.tool) {
+                miningTime /= gameState.itemTypes[selectedItem.type].efficiency || 1;
+            }
+            
+            // Start mining interval
+            gameState.miningInterval = setInterval(() => {
+                gameState.miningProgress += 100 / (miningTime / 100);
+                blockBreaking.style.width = `${gameState.miningProgress}%`;
+                
+                if (gameState.miningProgress >= 100) {
+                    finishMiningBlock();
+                }
+            }, 100);
+        }
+        
+        // Finish mining block
+        function finishMiningBlock() {
+            if (!gameState.miningBlock) return;
+            
+            clearInterval(gameState.miningInterval);
+            blockBreaking.classList.add('hidden');
+            
+            const { x, y, type } = gameState.miningBlock;
+            const blockInfo = gameState.blockTypes[type];
+            
+            // Remove block
+            setBlock(x, y, 'air');
+            
+            // Add drops to inventory
+            const dropType = blockInfo.drops || type;
+            addItemToInventory(dropType, 1);
+            
+            // Update stats
+            gameState.stats.blocksMined++;
+            
+            // Damage tool if used
+            const selectedItem = getSelectedItem();
+            if (selectedItem && gameState.itemTypes[selectedItem.type].tool === blockInfo.tool) {
+                selectedItem.durability = (selectedItem.durability || 0) - 1;
+                
+                if (selectedItem.durability <= 0) {
+                    removeItemFromInventory(selectedItem.type, 1);
+                }
+            }
+            
+            gameState.miningBlock = null;
+            gameState.miningProgress = 0;
+        }
+        
+        // Cancel mining
+        function cancelMining() {
+            if (gameState.miningInterval) {
+                clearInterval(gameState.miningInterval);
+                gameState.miningInterval = null;
+            }
+            
+            blockBreaking.classList.add('hidden');
+            gameState.miningBlock = null;
+            gameState.miningProgress = 0;
+        }
+        
+        // Place block
+        function placeBlock(x, y) {
+            const selectedItem = getSelectedItem();
+            if (!selectedItem || !gameState.blockTypes[selectedItem.type]) return false;
+            
+            if (removeItemFromInventory(selectedItem.type, 1)) {
+                setBlock(x, y, selectedItem.type);
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // Game over
+        function gameOver() {
+            gameState.isRunning = false;
+            cancelAnimationFrame(gameState.gameLoop);
+            
+            // Update stats
+            document.getElementById('blocksMinedStat').textContent = gameState.stats.blocksMined;
+            document.getElementById('itemsCraftedStat').textContent = gameState.stats.itemsCrafted;
+            document.getElementById('timeSurvivedStat').textContent = 
+                `${Math.floor((Date.now() - gameState.stats.startTime) / 1000)}s`;
+            
+            // Show game over screen
+            gameOverScreen.classList.remove('hidden');
+        }
+        
+        // Pause game
+        function pauseGame() {
+            gameState.isPaused = true;
+            cancelAnimationFrame(gameState.gameLoop);
+            pauseMenu.classList.remove('hidden');
+        }
+        
+        // Resume game
+        function resumeGame() {
+            gameState.isPaused = false;
+            pauseMenu.classList.add('hidden');
+            gameState.gameLoop = requestAnimationFrame(gameUpdate);
+        }
+        
+        // Open inventory
+        function openInventory() {
+            gameState.inventoryOpen = true;
+            inventoryScreen.classList.remove('hidden');
+            
+            // Populate inventory slots
+            const inventorySlots = inventoryScreen.querySelector('.grid.grid-cols-4');
+            inventorySlots.innerHTML = '';
+            
+            gameState.player.inventory.forEach((item, index) => {
+                const slot = document.createElement('div');
+                slot.className = 'inventory-item w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center relative';
+                slot.dataset.index = index;
+                
+                slot.innerHTML = `<span class="text-xl">${gameState.itemTypes[item.type].image}</span>
+                                 <span class="absolute bottom-0 right-0 text-xs bg-black bg-opacity-50 px-1 rounded">${item.count}</span>`;
+                
+                inventorySlots.appendChild(slot);
+            });
+        }
+        
+        // Close inventory
+        function closeInventory() {
+            gameState.inventoryOpen = false;
+            inventoryScreen.classList.add('hidden');
+        }
+        
+        // Event listeners for buttons
+        document.getElementById('startGame').addEventListener('click', () => {
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            initGame();
+        });
+        
+        document.getElementById('howToPlay').addEventListener('click', () => {
+            startScreen.classList.add('hidden');
+            howToScreen.classList.remove('hidden');
+        });
+        
+        document.getElementById('settingsButton').addEventListener('click', () => {
+            startScreen.classList.add('hidden');
+            settingsScreen.classList.remove('hidden');
+        });
+        
+        document.getElementById('backFromHowTo').addEventListener('click', () => {
+            howToScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+        
+        document.getElementById('saveSettings').addEventListener('click', () => {
+            // Save settings
+            gameState.settings.touchControls = document.getElementById('touchControlsToggle').checked;
+            gameState.settings.sensitivity = parseInt(document.getElementById('sensitivitySlider').value);
+            gameState.settings.particles = document.getElementById('particlesToggle').checked;
+            gameState.settings.dayNightCycle = document.getElementById('dayNightToggle').checked;
+            gameState.settings.difficulty = parseInt(document.getElementById('difficultySelect').value);
+            gameState.settings.renderDistance = parseInt(document.getElementById('renderDistance').value);
+            
+            settingsScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+        
+        document.getElementById('cancelSettings').addEventListener('click', () => {
+            settingsScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+        
+        document.getElementById('resumeButton').addEventListener('click', resumeGame);
+        document.getElementById('settingsInGameButton').addEventListener('click', () => {
+            pauseMenu.classList.add('hidden');
+            settingsScreen.classList.remove('hidden');
+        });
+        
+        document.getElementById('saveAndQuitButton').addEventListener('click', () => {
+            pauseMenu.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+        
+        document.getElementById('playAgainButton').addEventListener('click', () => {
+            gameOverScreen.classList.add('hidden');
+            initGame();
+        });
+        
+        document.getElementById('menuFromGameOverButton').addEventListener('click', () => {
+            gameOverScreen.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+        
+        document.getElementById('inventoryButton').addEventListener('click', openInventory);
+        document.getElementById('closeInventory').addEventListener('click', closeInventory);
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameState.isRunning || gameState.inventoryOpen) return;
+            
+            switch (e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                    gameState.keys.left = true;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    gameState.keys.right = true;
+                    break;
+                case 'ArrowUp':
+                case 'w':
+                case ' ':
+                    gameState.keys.up = true;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                    gameState.keys.down = true;
+                    break;
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    gameState.player.selectedHotbarIndex = parseInt(e.key) - 1;
+                    updateHotbar();
+                    break;
+                case 'e':
+                    if (!gameState.inventoryOpen) openInventory();
+                    break;
+                case 'Escape':
+                    if (gameState.isPaused) {
+                        resumeGame();
+                    } else {
+                        pauseGame();
+                    }
+                    break;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            switch (e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                    gameState.keys.left = false;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    gameState.keys.right = false;
+                    break;
+                case 'ArrowUp':
+                case 'w':
+                case ' ':
+                    gameState.keys.up = false;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                    gameState.keys.down = false;
+                    break;
+            }
+        });
+        
+        // Touch controls
+        document.getElementById('moveLeft').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            gameState.keys.left = true;
+        });
+        
+        document.getElementById('moveLeft').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            gameState.keys.left = false;
+        });
+        
+        document.getElementById('moveRight').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            gameState.keys.right = true;
+        });
+        
+        document.getElementById('moveRight').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            gameState.keys.right = false;
+        });
+        
+        document.getElementById('jumpButton').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            gameState.keys.up = true;
+        });
+        
+        document.getElementById('jumpButton').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            gameState.keys.up = false;
+        });
+        
+        document.getElementById('sneakButton').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            gameState.keys.down = true;
+        });
+        
+        document.getElementById('sneakButton').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            gameState.keys.down = false;
+        });
+        
+        // Block interaction
+        worldContainer.addEventListener('click', (e) => {
+            if (!gameState.isRunning || gameState.isPaused || gameState.inventoryOpen) return;
+            
+            // Calculate block position based on click and player position
+            const player = gameState.player;
+            const worldX = player.x + (e.clientX - window.innerWidth/2);
+            const worldY = player.y + (e.clientY - window.innerHeight/2);
+            
+            const blockX = Math.floor(worldX / 16);
+            const blockY = Math.floor(worldY / 16);
+            
+            // Check if clicking on a block or empty space
+            if (getBlock(blockX, blockY) !== 'air') {
+                // Start mining the block
+                startMiningBlock(blockX, blockY);
+            } else {
+                // Try to place a block
+                placeBlock(blockX, blockY);
+            }
+        });
+        
+        worldContainer.addEventListener('touchstart', (e) => {
+            if (!gameState.isRunning || gameState.isPaused || gameState.inventoryOpen) return;
+            
+            const touch = e.touches[0];
+            const player = gameState.player;
+            const worldX = player.x + (touch.clientX - window.innerWidth/2);
+            const worldY = player.y + (touch.clientY - window.innerHeight/2);
+            
+            const blockX = Math.floor(worldX / 16);
+            const blockY = Math.floor(worldY / 16);
+            
+            if (getBlock(blockX, blockY) !== 'air') {
+                startMiningBlock(blockX, blockY);
+            } else {
+                placeBlock(blockX, blockY);
+            }
+        });
+        
+        document.addEventListener('mouseup', cancelMining);
+        document.addEventListener('touchend', cancelMining);
+        
+        // Hotbar selection
+        hotbar.addEventListener('click', (e) => {
+            const slot = e.target.closest('.inventory-item');
+            if (slot) {
+                gameState.player.selectedHotbarIndex = parseInt(slot.dataset.index);
+                updateHotbar();
+            }
+        });
+        
+        // Initialize settings
+        document.getElementById('touchControlsToggle').checked = gameState.settings.touchControls;
+        document.getElementById('sensitivitySlider').value = gameState.settings.sensitivity;
+        document.getElementById('particlesToggle').checked = gameState.settings.particles;
+        document.getElementById('dayNightToggle').checked = gameState.settings.dayNightCycle;
+        document.getElementById('difficultySelect').value = gameState.settings.difficulty;
+        document.getElementById('renderDistance').value = gameState.settings.renderDistance;
+    </script>
+</body>
+</html>
