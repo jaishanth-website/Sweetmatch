@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sweet Match - a mindblowing game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .candy {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .candy:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+        
+        .selected {
+            animation: pulse 0.5s infinite;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+        }
+        
+        .game-tile {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .page {
+            transition: all 0.5s ease;
+        }
+        
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px);
+        }
+        
+        .visible {
+            opacity: 1;
+            pointer-events: all;
+            transform: translateY(0);
+        }
+        
+        .score-bubble {
+            animation: bounce 1s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-900 to-pink-700 min-h-screen text-white font-sans overflow-x-hidden">
+    <!-- Front Page -->
+    <div id="frontPage" class="page visible flex flex-col items-center justify-center min-h-screen p-4">
+        <div class="text-center mb-12">
+            <h1 class="text-6xl md:text-8xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-pink-400">
+                Sweet Match
+            </h1>
+            <p class="text-xl md:text-2xl text-pink-200 mb-8">The sweetest matching game you'll ever play!</p>
+            
+            <div class="flex justify-center space-x-4 mb-12">
+                <div class="w-16 h-16 rounded-xl bg-yellow-400 shadow-lg flex items-center justify-center">
+                    <i class="fas fa-candy-cane text-3xl text-white"></i>
+                </div>
+                <div class="w-16 h-16 rounded-xl bg-red-400 shadow-lg flex items-center justify-center">
+                    <i class="fas fa-ice-cream text-3xl text-white"></i>
+                </div>
+                <div class="w-16 h-16 rounded-xl bg-green-400 shadow-lg flex items-center justify-center">
+                    <i class="fas fa-cookie text-3xl text-white"></i>
+                </div>
+                <div class="w-16 h-16 rounded-xl bg-blue-400 shadow-lg flex items-center justify-center">
+                    <i class="fas fa-lollipop text-3xl text-white"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex flex-col space-y-4 w-full max-w-md">
+            <button id="startGame" class="bg-pink-500 hover:bg-pink-600 text-white text-2xl py-4 px-8 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300">
+                <i class="fas fa-play mr-2"></i> Start Game
+            </button>
+            
+            <button class="bg-purple-600 hover:bg-purple-700 text-white text-xl py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300">
+                <i class="fas fa-trophy mr-2"></i> Leaderboard
+            </button>
+            
+            <button class="bg-indigo-600 hover:bg-indigo-700 text-white text-xl py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300">
+                <i class="fas fa-cog mr-2"></i> Settings
+            </button>
+        </div>
+        
+        <div class="absolute bottom-4 left-0 right-0 text-center text-pink-200 text-sm">
+            <p>Match 3 or more candies to score points!</p>
+        </div>
+    </div>
+    
+    <!-- Game Page -->
+    <div id="gamePage" class="page hidden min-h-screen p-4">
+        <div class="container mx-auto max-w-4xl">
+            <!-- Header -->
+            <header class="flex justify-between items-center mb-6">
+                <button id="backButton" class="bg-purple-700 hover:bg-purple-800 text-white text-xl py-2 px-4 rounded-full shadow-lg">
+                    <i class="fas fa-arrow-left mr-2"></i> Menu
+                </button>
+                
+                <div class="text-center">
+                    <h2 class="text-2xl font-bold">Level 1</h2>
+                    <p class="text-pink-200">Match the candies!</p>
+                </div>
+                
+                <div class="flex items-center space-x-6">
+                    <div class="bg-purple-800 bg-opacity-50 rounded-full px-4 py-2 flex items-center">
+                        <i class="fas fa-star text-yellow-400 text-xl mr-2"></i>
+                        <span id="score" class="text-xl font-bold">0</span>
+                    </div>
+                    
+                    <div class="bg-pink-800 bg-opacity-50 rounded-full px-4 py-2 flex items-center">
+                        <i class="fas fa-clock text-blue-300 text-xl mr-2"></i>
+                        <span id="time" class="text-xl font-bold">60</span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Game Board -->
+            <div class="flex justify-center mb-8">
+                <div class="game-board" id="gameBoard"></div>
+            </div>
+            
+            <!-- Game Controls -->
+            <div class="flex justify-between items-center">
+                <div class="flex space-x-4">
+                    <button id="shuffleButton" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-full shadow-lg">
+                        <i class="fas fa-random mr-2"></i> Shuffle
+                    </button>
+                    <button id="hintButton" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-full shadow-lg">
+                        <i class="fas fa-lightbulb mr-2"></i> Hint
+                    </button>
+                </div>
+                
+                <div class="text-right">
+                    <p class="text-pink-200">Moves: <span id="moves" class="font-bold">0</span></p>
+                    <p class="text-sm text-pink-300">Goal: 500 points</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Game state
+        const gameState = {
+            score: 0,
+            timeLeft: 60,
+            moves: 0,
+            selectedTile: null,
+            board: [],
+            candyTypes: ['red', 'blue', 'green', 'yellow', 'purple'],
+            timer: null,
+            isAnimating: false
+        };
+        
+        // DOM elements
+        const frontPage = document.getElementById('frontPage');
+        const gamePage = document.getElementById('gamePage');
+        const startGameBtn = document.getElementById('startGame');
+        const backButton = document.getElementById('backButton');
+        const gameBoard = document.getElementById('gameBoard');
+        const scoreElement = document.getElementById('score');
+        const timeElement = document.getElementById('time');
+        const movesElement = document.getElementById('moves');
+        const shuffleButton = document.getElementById('shuffleButton');
+        const hintButton = document.getElementById('hintButton');
+        
+        // Candy icons mapping
+        const candyIcons = {
+            red: 'fa-ice-cream',
+            blue: 'fa-lollipop',
+            green: 'fa-cookie',
+            yellow: 'fa-candy-cane',
+            purple: 'fa-gem'
+        };
+        
+        // Candy colors mapping
+        const candyColors = {
+            red: 'bg-red-500',
+            blue: 'bg-blue-400',
+            green: 'bg-green-400',
+            yellow: 'bg-yellow-400',
+            purple: 'bg-purple-400'
+        };
+        
+        // Initialize game
+        function initGame() {
+            gameState.score = 0;
+            gameState.timeLeft = 60;
+            gameState.moves = 0;
+            gameState.selectedTile = null;
+            gameState.board = [];
+            gameState.isAnimating = false;
+            
+            updateUI();
+            createBoard();
+            startTimer();
+        }
+        
+        // Create game board
+        function createBoard() {
+            gameBoard.innerHTML = '';
+            gameState.board = [];
+            
+            for (let row = 0; row < 8; row++) {
+                gameState.board[row] = [];
+                for (let col = 0; col < 8; col++) {
+                    // Ensure no matches at start
+                    let type;
+                    do {
+                        type = gameState.candyTypes[Math.floor(Math.random() * gameState.candyTypes.length)];
+                    } while (
+                        (row >= 2 && gameState.board[row-1][col] === type && gameState.board[row-2][col] === type) ||
+                        (col >= 2 && gameState.board[row][col-1] === type && gameState.board[row][col-2] === type)
+                    );
+                    
+                    gameState.board[row][col] = type;
+                    createTile(row, col, type);
+                }
+            }
+        }
+        
+        // Create a game tile
+        function createTile(row, col, type) {
+            const tile = document.createElement('div');
+            tile.className = `game-tile ${candyColors[type]} candy`;
+            tile.dataset.row = row;
+            tile.dataset.col = col;
+            
+            const icon = document.createElement('i');
+            icon.className = `fas ${candyIcons[type]} text-white text-2xl`;
+            tile.appendChild(icon);
+            
+            tile.addEventListener('click', () => handleTileClick(row, col));
+            
+            gameBoard.appendChild(tile);
+            return tile;
+        }
+        
+        // Handle tile click
+        function handleTileClick(row, col) {
+            if (gameState.isAnimating) return;
+            
+            const tile = document.querySelector(`.game-tile[data-row="${row}"][data-col="${col}"]`);
+            
+            // If no tile is selected, select this one
+            if (!gameState.selectedTile) {
+                gameState.selectedTile = { row, col };
+                tile.classList.add('selected');
+                return;
+            }
+            
+            // If clicking the same tile, deselect it
+            if (gameState.selectedTile.row === row && gameState.selectedTile.col === col) {
+                gameState.selectedTile = null;
+                tile.classList.remove('selected');
+                return;
+            }
+            
+            // Check if tiles are adjacent
+            const selectedTile = gameState.selectedTile;
+            const isAdjacent = 
+                (Math.abs(selectedTile.row - row) === 1 && selectedTile.col === col) ||
+                (Math.abs(selectedTile.col - col) === 1 && selectedTile.row === row);
+            
+            if (isAdjacent) {
+                // Swap tiles
+                swapTiles(selectedTile.row, selectedTile.col, row, col);
+            } else {
+                // Select new tile
+                document.querySelector('.selected')?.classList.remove('selected');
+                gameState.selectedTile = { row, col };
+                tile.classList.add('selected');
+            }
+        }
+        
+        // Swap two tiles
+        function swapTiles(row1, col1, row2, col2) {
+            gameState.isAnimating = true;
+            gameState.moves++;
+            updateUI();
+            
+            // Remove selection
+            document.querySelector('.selected')?.classList.remove('selected');
+            gameState.selectedTile = null;
+            
+            // Swap in the board array
+            const temp = gameState.board[row1][col1];
+            gameState.board[row1][col1] = gameState.board[row2][col2];
+            gameState.board[row2][col2] = temp;
+            
+            // Animate the swap
+            const tile1 = document.querySelector(`.game-tile[data-row="${row1}"][data-col="${col1}"]`);
+            const tile2 = document.querySelector(`.game-tile[data-row="${row2}"][data-col="${col2}"]`);
+            
+            tile1.style.transform = 'translateY(10px)';
+            tile2.style.transform = 'translateY(-10px)';
+            
+            setTimeout(() => {
+                tile1.style.transform = '';
+                tile2.style.transform = '';
+                
+                // Update DOM positions
+                gameBoard.insertBefore(tile2, tile1.nextSibling);
+                gameBoard.insertBefore(tile1, tile2.nextSibling);
+                
+                // Update dataset attributes
+                tile1.dataset.row = row2;
+                tile1.dataset.col = col2;
+                tile2.dataset.row = row1;
+                tile2.dataset.col = col1;
+                
+                // Check for matches after swap
+                setTimeout(() => {
+                    const matches = findMatches();
+                    if (matches.length > 0) {
+                        processMatches(matches);
+                    } else {
+                        // No matches, swap back
+                        swapTiles(row1, col1, row2, col2);
+                    }
+                }, 100);
+            }, 300);
+        }
+        
+        // Find all matches on the board
+        function findMatches() {
+            const matches = [];
+            
+            // Check horizontal matches
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 6; col++) {
+                    const type = gameState.board[row][col];
+                    if (type === gameState.board[row][col+1] && type === gameState.board[row][col+2]) {
+                        let match = [{row, col}, {row, col: col+1}, {row, col: col+2}];
+                        
+                        // Check for longer matches
+                        let offset = 3;
+                        while (col + offset < 8 && gameState.board[row][col+offset] === type) {
+                            match.push({row, col: col+offset});
+                            offset++;
+                        }
+                        
+                        matches.push(match);
+                    }
+                }
+            }
+            
+            // Check vertical matches
+            for (let col = 0; col < 8; col++) {
+                for (let row = 0; row < 6; row++) {
+                    const type = gameState.board[row][col];
+                    if (type === gameState.board[row+1][col] && type === gameState.board[row+2][col]) {
+                        let match = [{row, col}, {row: row+1, col}, {row: row+2, col}];
+                        
+                        // Check for longer matches
+                        let offset = 3;
+                        while (row + offset < 8 && gameState.board[row+offset][col] === type) {
+                            match.push({row: row+offset, col});
+                            offset++;
+                        }
+                        
+                        matches.push(match);
+                    }
+                }
+            }
+            
+            return matches;
+        }
+        
+        // Process matches (remove tiles, add score, drop new candies)
+        function processMatches(matches) {
+            // Calculate score
+            let scoreToAdd = 0;
+            const matchedTiles = new Set();
+            
+            matches.forEach(match => {
+                scoreToAdd += match.length * 10;
+                match.forEach(pos => {
+                    matchedTiles.add(`${pos.row},${pos.col}`);
+                });
+            });
+            
+            gameState.score += scoreToAdd;
+            updateUI();
+            
+            // Animate matched tiles
+            matchedTiles.forEach(posStr => {
+                const [row, col] = posStr.split(',').map(Number);
+                const tile = document.querySelector(`.game-tile[data-row="${row}"][data-col="${col}"]`);
+                tile.style.transform = 'scale(0)';
+                tile.style.opacity = '0';
+            });
+            
+            // Remove matched tiles after animation
+            setTimeout(() => {
+                matchedTiles.forEach(posStr => {
+                    const [row, col] = posStr.split(',').map(Number);
+                    const tile = document.querySelector(`.game-tile[data-row="${row}"][data-col="${col}"]`);
+                    if (tile) gameBoard.removeChild(tile);
+                });
+                
+                // Drop candies from above
+                dropCandies();
+            }, 300);
+        }
+        
+        // Drop candies from above to fill empty spaces
+        function dropCandies() {
+            for (let col = 0; col < 8; col++) {
+                let emptySpaces = 0;
+                
+                // Count empty spaces from bottom up
+                for (let row = 7; row >= 0; row--) {
+                    const tile = document.querySelector(`.game-tile[data-row="${row}"][data-col="${col}"]`);
+                    
+                    if (!tile) {
+                        emptySpaces++;
+                    } else if (emptySpaces > 0) {
+                        // Move existing tile down
+                        const newRow = row + emptySpaces;
+                        gameState.board[newRow][col] = gameState.board[row][col];
+                        gameState.board[row][col] = null;
+                        
+                        tile.dataset.row = newRow;
+                        tile.style.transition = 'transform 0.3s ease';
+                        tile.style.transform = `translateY(${emptySpaces * 65}px)`;
+                        
+                        setTimeout(() => {
+                            tile.style.transform = '';
+                        }, 300);
+                    }
+                }
+                
+                // Add new candies at the top
+                for (let i = 0; i < emptySpaces; i++) {
+                    const row = emptySpaces - i - 1;
+                    const type = gameState.candyTypes[Math.floor(Math.random() * gameState.candyTypes.length)];
+                    gameState.board[row][col] = type;
+                    
+                    const tile = createTile(row, col, type);
+                    tile.style.transform = `translateY(-${(i + 1) * 65}px)`;
+                    tile.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        tile.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                        tile.style.transform = '';
+                        tile.style.opacity = '1';
+                    }, 10);
+                }
+            }
+            
+            // Check for new matches after dropping
+            setTimeout(() => {
+                const newMatches = findMatches();
+                if (newMatches.length > 0) {
+                    processMatches(newMatches);
+                } else {
+                    gameState.isAnimating = false;
+                }
+            }, 500);
+        }
+        
+        // Shuffle the board
+        function shuffleBoard() {
+            if (gameState.isAnimating) return;
+            
+            gameState.isAnimating = true;
+            
+            // Collect all tiles
+            const tiles = Array.from(document.querySelectorAll('.game-tile'));
+            
+            // Animate shuffle
+            tiles.forEach(tile => {
+                tile.style.transition = 'transform 0.5s ease, opacity 0.3s ease';
+                tile.style.transform = 'scale(0)';
+                tile.style.opacity = '0';
+            });
+            
+            setTimeout(() => {
+                // Randomize board
+                for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        gameState.board[row][col] = gameState.candyTypes[Math.floor(Math.random() * gameState.candyTypes.length)];
+                    }
+                }
+                
+                // Ensure no matches after shuffle
+                while (findMatches().length > 0) {
+                    for (let row = 0; row < 8; row++) {
+                        for (let col = 0; col < 8; col++) {
+                            gameState.board[row][col] = gameState.candyTypes[Math.floor(Math.random() * gameState.candyTypes.length)];
+                        }
+                    }
+                }
+                
+                // Recreate tiles with new types
+                gameBoard.innerHTML = '';
+                for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        createTile(row, col, gameState.board[row][col]);
+                    }
+                }
+                
+                // Animate appearance
+                const newTiles = Array.from(document.querySelectorAll('.game-tile'));
+                newTiles.forEach((tile, index) => {
+                    tile.style.transform = 'scale(0)';
+                    tile.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        tile.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                        tile.style.transform = 'scale(1)';
+                        tile.style.opacity = '1';
+                    }, index * 20);
+                });
+                
+                setTimeout(() => {
+                    gameState.isAnimating = false;
+                }, 800);
+            }, 500);
+        }
+        
+        // Show hint (highlight a possible move)
+        function showHint() {
+            if (gameState.isAnimating) return;
+            
+            // Find a possible move
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    // Check right neighbor
+                    if (col < 7) {
+                        // Swap temporarily
+                        const temp = gameState.board[row][col];
+                        gameState.board[row][col] = gameState.board[row][col+1];
+                        gameState.board[row][col+1] = temp;
+                        
+                        // Check for matches
+                        const matches = findMatches();
+                        
+                        // Swap back
+                        gameState.board[row][col+1] = gameState.board[row][col];
+                        gameState.board[row][col] = temp;
+                        
+                        if (matches.length > 0) {
+                            // Highlight these tiles
+                            const tile1 = document.querySelector(`.game-tile[data-row="${row}"][data-col="${col}"]`);
+                            const tile2 = document.querySelector(`.game-tile[data-row="${row}"][data-col="${col+1}"]`);
+                            
+                            tile1.classList.add('selected');
+                            tile2.classList.add('selected');
+                            
+                            setTimeout(() => {
+                                tile1.classList.remove('selected');
+                                tile2.classList.remove('selected');
+                            }, 1500);
+                            
+                            return;
+                        }
+                    }
+                    
+                    // Check bottom neighbor
+                    if (row < 7) {
+                        // Swap temporarily
+                        const temp = gameState.board[row][col];
+                        gameState.board[row][col] = gameState.board[row+1][col];
+                        gameState.board[row+1][col] = temp;
+                        
+                        // Check for matches
+                        const matches = findMatches();
+                        
+                        // Swap back
+                        gameState.board[row+1][col] = gameState.board[row][col];
+                        gameState.board[row][col] = temp;
+                        
+                        if (matches.length > 0) {
+                            // Highlight these tiles
+                            const tile1 = document.querySelector(`.game-tile[data-row="${row}"][data-col="${col}"]`);
+                            const tile2 = document.querySelector(`.game-tile[data-row="${row+1}"][data-col="${col}"]`);
+                            
+                            tile1.classList.add('selected');
+                            tile2.classList.add('selected');
+                            
+                            setTimeout(() => {
+                                tile1.classList.remove('selected');
+                                tile2.classList.remove('selected');
+                            }, 1500);
+                            
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            // If no moves found, shuffle
+            alert('No possible moves found! Shuffling the board...');
+            shuffleBoard();
+        }
+        
+        // Start timer
+        function startTimer() {
+            if (gameState.timer) clearInterval(gameState.timer);
+            
+            gameState.timer = setInterval(() => {
+                gameState.timeLeft--;
+                updateUI();
+                
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timer);
+                    alert(`Game over! Your score: ${gameState.score}`);
+                    showFrontPage();
+                }
+            }, 1000);
+        }
+        
+        // Update UI elements
+        function updateUI() {
+            scoreElement.textContent = gameState.score;
+            timeElement.textContent = gameState.timeLeft;
+            movesElement.textContent = gameState.moves;
+            
+            // Pulse score when it changes
+            scoreElement.classList.add('score-bubble');
+            setTimeout(() => {
+                scoreElement.classList.remove('score-bubble');
+            }, 1000);
+        }
+        
+        // Show game page
+        function showGamePage() {
+            frontPage.classList.remove('visible');
+            frontPage.classList.add('hidden');
+            
+            gamePage.classList.remove('hidden');
+            gamePage.classList.add('visible');
+            
+            initGame();
+        }
+        
+        // Show front page
+        function showFrontPage() {
+            gamePage.classList.remove('visible');
+            gamePage.classList.add('hidden');
+            
+            frontPage.classList.remove('hidden');
+            frontPage.classList.add('visible');
+            
+            if (gameState.timer) clearInterval(gameState.timer);
+        }
+        
+        // Event listeners
+        startGameBtn.addEventListener('click', showGamePage);
+        backButton.addEventListener('click', showFrontPage);
+        shuffleButton.addEventListener('click', shuffleBoard);
+        hintButton.addEventListener('click', showHint);
+        
+        // Initialize
+        document.querySelectorAll('.game-tile').forEach(tile => {
+            tile.addEventListener('click', function() {
+                const row = parseInt(this.dataset.row);
+                const col = parseInt(this.dataset.col);
+                handleTileClick(row, col);
+            });
+        });
+    </script>
+</body>
+</html>
